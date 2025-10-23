@@ -1,77 +1,53 @@
+require('dotenv').config(); // Load .env variables
+
 const express = require('express');
-const bodyParser = require('body-parser');
-require('dotenv').config();
 const { CosmosClient } = require('@azure/cosmos');
 
 const app = express();
-app.use(bodyParser.json());
+app.use(express.json());
 
-// Cosmos DB setup
-const cosmosClient = new CosmosClient({
-  endpoint: process.env.COSMOS_ENDPOINT,
-  key: process.env.COSMOS_KEY
-});
-const container = cosmosClient
-  .database(process.env.COSMOS_DATABASE)
-  .container(process.env.COSMOS_CONTAINER);
+// ✅ Cosmos DB Config from environment variables (matching .env)
+const endpoint = process.env.COSMOS_ENDPOINT;
+const key = process.env.COSMOS_KEY;
+const databaseId = process.env.COSMOS_DATABASE;
+const containerId = process.env.COSMOS_CONTAINER;
 
-// Function to log user messages
-async function logUserMessage(userId, message) {
-  try {
-    await container.items.create({
-      userId,
-      message,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Error writing to Cosmos DB:', error.message);
-  }
+if (!endpoint || !key || !databaseId || !containerId) {
+  console.error('❌ Missing Cosmos DB credentials or config. Check your .env file.');
+  process.exit(1);
 }
 
-app.post('/webhook', async (req, res) => {
-  const intent = req.body.queryResult?.intent?.displayName || 'Unknown';
-  const userQuery = req.body.queryResult?.queryText || '';
-  const userId = req.body.session || 'anonymous';
+// ✅ Initialise Cosmos Client
+const client = new CosmosClient({ endpoint, key });
 
-  let responseText = 'Sorry, I didn’t understand that.';
+// ✅ Get or create container
+async function getChatContainer() {
+  const { database } = await client.databases.createIfNotExists({ id: databaseId });
+  const { container } = await database.containers.createIfNotExists({ id: containerId });
+  return container;
+}
 
-  switch (intent) {
-    case 'Welcome':
-      responseText = 'Welcome to Hakikisha Insurance! How can I assist you today?';
-      break;
-    case 'Check Policy Status':
-      responseText = 'Your policy is active and valid until 31st December 2025.';
-      break;
-    case 'Premium Reminder':
-      responseText = 'Your next premium payment is due on 30th October.';
-      break;
-    case 'Claims Status':
-      responseText = 'Please provide your claim number so I can check the status.';
-      break;
-    case 'Complaint Status':
-      responseText = 'Your complaint is currently under review. We’ll update you within 48 hours.';
-      break;
-    case 'Escalation to Agent':
-      responseText = 'I’m connecting you to a live agent. Please hold on.';
-      break;
-    case 'Feedback':
-      responseText = 'We’d love your feedback! Please rate your experience from 1 to 5.';
-      break;
-    default:
-      responseText = 'Sorry, I didn’t understand that. Could you please rephrase your question?';
+// ✅ Route to log chat messages
+app.post('/log-chat', async (req, res) => {
+  try {
+    const container = await getChatContainer();
+    const chatEntry = req.body; // Expect userId, message, timestamp
+
+    const { resource } = await container.items.create(chatEntry);
+    res.status(201).json(resource);
+  } catch (error) {
+    console.error('❌ Error logging chat:', error.message);
+    res.status(500).send('Failed to log chat');
   }
-
-  // Log the interaction to Cosmos DB
-  await logUserMessage(userId, {
-    intent,
-    userQuery,
-    responseText
-  });
-
-  res.json({ fulfillmentText: responseText });
 });
 
+// Add a GET route for the root path
+app.get('/', (req, res) => {
+  res.send('Hakikisha Insurance Assistant Server is running!');
+});
+
+// ✅ Dynamic port for Render or local fallback
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
