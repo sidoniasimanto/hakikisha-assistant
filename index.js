@@ -1,9 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const { CosmosClient } = require('@azure/cosmos');
-const cors = require('cors'); // Added CORS
 const app = express();
-app.use(cors()); // Enable CORS
 app.use(express.json());
 
 // Cosmos DB Config
