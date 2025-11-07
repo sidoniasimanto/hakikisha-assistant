@@ -94,121 +94,55 @@ const claims = [
   { claimId: "CLM0020", policyNumber: "PN100020", status: "Approved", amount: 12000, description: "Accident damage" }
 ];
 
-// ---------- PAYMENTS ----------
-const payments = [
-  { id: "PAY100001", policyNumber: "PN100001", dueDate: "2024-08-24", amount: 352.58, status: "Paid", createdAt: "2021-05-30" },
-  { id: "PAY100002", policyNumber: "PN100002", dueDate: "2026-12-08", amount: 558.78, status: "Pending", createdAt: "2023-02-03" },
-  { id: "PAY100003", policyNumber: "PN100003", dueDate: "2024-12-26", amount: 317.48, status: "Paid", createdAt: "2023-12-17" },
-  { id: "PAY100004", policyNumber: "PN100004", dueDate: "2024-11-24", amount: 1098.86, status: "Overdue", createdAt: "2022-02-07" },
-  { id: "PAY100005", policyNumber: "PN100005", dueDate: "2026-08-20", amount: 666.58, status: "Overdue", createdAt: "2021-05-19" },
-  { id: "PAY100006", policyNumber: "PN100006", dueDate: "2025-02-24", amount: 855.7, status: "Overdue", createdAt: "2023-09-21" },
-  { id: "PAY100007", policyNumber: "PN100007", dueDate: "2025-01-11", amount: 325.35, status: "Overdue", createdAt: "2023-04-12" },
-  { id: "PAY100008", policyNumber: "PN100008", dueDate: "2025-04-17", amount: 1314.94, status: "Pending", createdAt: "2021-01-09" },
-  { id: "PAY100009", policyNumber: "PN100009", dueDate: "2024-08-13", amount: 236.36, status: "Paid", createdAt: "2025-12-28" },
-  { id: "PAY100010", policyNumber: "PN100010", dueDate: "2026-10-13", amount: 1466.47, status: "Paid", createdAt: "2025-04-11" },
-  { id: "PAY100011", policyNumber: "PN100011", dueDate: "2025-02-09", amount: 756.82, status: "Pending", createdAt: "2022-06-12" },
-  { id: "PAY100012", policyNumber: "PN100012", dueDate: "2024-04-17", amount: 840.61, status: "Overdue", createdAt: "2024-07-01" },
-  { id: "PAY100013", policyNumber: "PN100013", dueDate: "2026-07-14", amount: 608.77, status: "Paid", createdAt: "2025-05-08" },
-  { id: "PAY100014", policyNumber: "PN100014", dueDate: "2026-09-21", amount: 1236.31, status: "Pending", createdAt: "2025-05-26" },
-  { id: "PAY100015", policyNumber: "PN100015", dueDate: "2024-07-31", amount: 625.51, status: "Paid", createdAt: "2021-06-16" },
-  { id: "PAY100016", policyNumber: "PN100016", dueDate: "2024-10-07", amount: 725.11, status: "Overdue", createdAt: "2025-05-24" },
-  { id: "PAY100017", policyNumber: "PN100017", dueDate: "2026-04-21", amount: 1068.18, status: "Overdue", createdAt: "2021-06-06" },
-  { id: "PAY100018", policyNumber: "PN100018", dueDate: "2026-11-16", amount: 542.51, status: "Paid", createdAt: "2020-03-29" },
-  { id: "PAY100019", policyNumber: "PN100019", dueDate: "2026-06-09", amount: 389.88, status: "Paid", createdAt: "2021-04-28" },
-  { id: "PAY100020", policyNumber: "PN100020", dueDate: "2026-01-30", amount: 1308.02, status: "Pending", createdAt: "2025-04-14" }
-];
-
 // ---------- MATCHING LOGIC ----------
 function matchIntent(message) {
-  // Welcome intent
-  if (/^(hi|hello|hey|good morning|good afternoon|good evening)\b/i.test(message)) {
-    return "Hello! Welcome to Hakikisha Insurance. How can I assist you today?";
+  const custMatch = message.match(/CUST\d{3}/i);
+  if (custMatch) {
+    const customer = customers.find(c => c.customerId === custMatch[0].toUpperCase());
+    if (customer) {
+      const policy = policies.find(p => p.customerId === customer.customerId);
+      return `Customer ${customer.name} (${customer.customerId}) has policy ${policy.policyNumber}. Status: ${policy.status}, Product: ${policy.product}.`;
+    }
   }
-  // Goodbye intent
-  if (/\b(bye|goodbye|see you|farewell|thanks|thank you)\b/i.test(message)) {
-    return "Goodbye! Have a great day!";
+
+  const policyMatch = message.match(/PN\d{6}/i);
+  if (policyMatch) {
+    const policy = policies.find(p => p.policyNumber === policyMatch[0].toUpperCase());
+    if (policy) {
+      const customer = customers.find(c => c.customerId === policy.customerId);
+      return `Policy ${policy.policyNumber} belongs to ${customer.name}. Status: ${policy.status}, Premium: KES ${policy.premium}, Expiry: ${policy.expiryDate}.`;
+    }
   }
-  // Default response
-  return "I'm sorry, I didn't understand that. Can you please rephrase?";
+
+  const claimMatch = message.match(/CLM\d{4}/i);
+  if (claimMatch) {
+    const claim = claims.find(cl => cl.claimId === claimMatch[0].toUpperCase());
+    if (claim) {
+      const policy = policies.find(p => p.policyNumber === claim.policyNumber);
+      const customer = customers.find(c => c.customerId === policy.customerId);
+      return `Claim ${claim.claimId} for ${customer.name} (${policy.policyNumber}) is ${claim.status}. Amount: KES ${claim.amount}, Description: ${claim.description}.`;
+    }
+  }
+
+  return "Sorry, I didn't understand that. Please provide a valid customer ID, policy number, or claim ID.";
 }
 
-// ---------- API ENDPOINTS ----------
-app.get('/', (req, res) => {
-  res.send('Welcome to the Hakikisha Insurance API');
-});
+// ---------- Dialogflow Webhook ----------
+app.post('/webhook', async (req, res) => {
+  const userMessage = req.body.queryResult.queryText;
+  const userId = req.body.session || "unknown";
 
-// Customers
-app.get('/customers', async (req, res) => {
+  const responseText = matchIntent(userMessage);
+
   const container = await getChatContainer();
-  const query = 'SELECT * FROM c WHERE c.type = "customer"';
-  const { resources: customers } = await container.items.query(query).fetchAll();
-  res.json(customers);
+  await container.items.create({ userId, message: userMessage, response: responseText, timestamp: new Date().toISOString() });
+
+  res.json({ fulfillmentText: responseText });
 });
 
-app.post('/customers', async (req, res) => {
-  const container = await getChatContainer();
-  const customer = req.body;
-  customer.type = "customer";
-  const { resource: createdCustomer } = await container.items.create(customer);
-  res.status(201).json(createdCustomer);
-});
+// ---------- Health Check ----------
+app.get('/', (req, res) => res.send('Hakikisha Insurance Assistant Server is running!'));
 
-// Policies
-app.get('/policies', async (req, res) => {
-  const container = await getChatContainer();
-  const query = 'SELECT * FROM c WHERE c.type = "policy"';
-  const { resources: policies } = await container.items.query(query).fetchAll();
-  res.json(policies);
-});
-
-app.post('/policies', async (req, res) => {
-  const container = await getChatContainer();
-  const policy = req.body;
-  policy.type = "policy";
-  const { resource: createdPolicy } = await container.items.create(policy);
-  res.status(201).json(createdPolicy);
-});
-
-// Claims
-app.get('/claims', async (req, res) => {
-  const container = await getChatContainer();
-  const query = 'SELECT * FROM c WHERE c.type = "claim"';
-  const { resources: claims } = await container.items.query(query).fetchAll();
-  res.json(claims);
-});
-
-app.post('/claims', async (req, res) => {
-  const container = await getChatContainer();
-  const claim = req.body;
-  claim.type = "claim";
-  const { resource: createdClaim } = await container.items.create(claim);
-  res.status(201).json(createdClaim);
-});
-
-// Payments
-app.get('/payments', async (req, res) => {
-  const container = await getChatContainer();
-  const query = 'SELECT * FROM c WHERE c.type = "payment"';
-  const { resources: payments } = await container.items.query(query).fetchAll();
-  res.json(payments);
-});
-
-app.post('/payments', async (req, res) => {
-  const container = await getChatContainer();
-  const payment = req.body;
-  payment.type = "payment";
-  const { resource: createdPayment } = await container.items.create(payment);
-  res.status(201).json(createdPayment);
-});
-
-// Chatbot
-app.post('/webhook', (req, res) => {
-  const { message } = req.body;
-  const response = matchIntent(message);
-  res.json({ response });
-});
-
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
-});
+// ---------- Start Server ----------
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
