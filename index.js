@@ -124,7 +124,7 @@ function matchIntent(message) {
     }
   }
 
-  return "Sorry, I didn't understand that. Please provide a valid customer ID, policy number, or claim ID.";
+  return "Hello,Welcome to Hakikisha insurance. Please provide a valid customer ID, policy number, or claim ID for assistance.";
 }
 
 // ---------- Dialogflow Webhook ----------
