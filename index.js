@@ -204,7 +204,7 @@ app.post('/payments', async (req, res) => {
 });
 
 // Chatbot
-app.post('/chat', (req, res) => {
+app.post('/webhook', (req, res) => {
   const { message } = req.body;
   const response = matchIntent(message);
   res.json({ response });
