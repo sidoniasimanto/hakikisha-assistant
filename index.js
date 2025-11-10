@@ -97,88 +97,234 @@ const claims = [
 // ---------- FEEDBACK STORAGE ----------
 const feedbackData = [];
 
+// Session state management for multi-turn feedback conversations
+const feedbackSessions = {};
+
+// ---------- FEEDBACK HELPER FUNCTIONS ----------
+
+// Detect sentiment from text
+function analyzeSentiment(text) {
+  const positiveWords = ['good', 'great', 'excellent', 'amazing', 'wonderful', 'fantastic', 'helpful', 'quick', 'fast', 'satisfied', 'happy', 'love', 'best', 'perfect', 'smooth', 'easy', 'professional'];
+  const negativeWords = ['bad', 'poor', 'terrible', 'awful', 'slow', 'unhelpful', 'disappointed', 'frustrated', 'angry', 'worst', 'horrible', 'useless', 'waste', 'confused', 'difficult', 'problem'];
+  
+  const lowerText = text.toLowerCase();
+  const positiveCount = positiveWords.filter(word => lowerText.includes(word)).length;
+  const negativeCount = negativeWords.filter(word => lowerText.includes(word)).length;
+  
+  if (positiveCount > negativeCount) return 'positive';
+  if (negativeCount > positiveCount) return 'negative';
+  return 'neutral';
+}
+
+// Extract rating from natural language
+function extractRating(message) {
+  // Match patterns like "5 stars", "5/5", "rate 5", "rating: 4", "I give 3"
+  const patterns = [
+    /(?:rate|rating|give|score)?\s*[:=]?\s*([1-5])(?:\/5|\s*stars?|\s*out of 5)?/i,
+    /([1-5])\s*(?:stars?|\/5|out of 5)/i,
+    /(?:excellent|amazing|perfect)/i, // 5 stars
+    /(?:good|satisfied|happy)/i, // 4 stars
+    /(?:okay|fine|average|decent)/i, // 3 stars
+    /(?:poor|bad|unsatisfied)/i, // 2 stars
+    /(?:terrible|awful|worst)/i // 1 star
+  ];
+  
+  for (let pattern of patterns.slice(0, 2)) {
+    const match = message.match(pattern);
+    if (match && match[1]) {
+      const rating = parseInt(match[1]);
+      if (rating >= 1 && rating <= 5) return rating;
+    }
+  }
+  
+  // Sentiment-based rating
+  const lowerMsg = message.toLowerCase();
+  if (lowerMsg.match(/excellent|amazing|perfect/)) return 5;
+  if (lowerMsg.match(/good|satisfied|happy/)) return 4;
+  if (lowerMsg.match(/okay|fine|average|decent/)) return 3;
+  if (lowerMsg.match(/poor|bad|unsatisfied/)) return 2;
+  if (lowerMsg.match(/terrible|awful|worst/)) return 1;
+  
+  return null;
+}
+
+// Categorize feedback
+function categorizeFeedback(comments) {
+  const categories = [];
+  const lowerComments = comments.toLowerCase();
+  
+  if (lowerComments.match(/speed|fast|slow|quick|time|wait|delay/)) categories.push('response-time');
+  if (lowerComments.match(/helpful|help|support|assist|service/)) categories.push('service-quality');
+  if (lowerComments.match(/easy|difficult|simple|complicated|understand|confus/)) categories.push('user-experience');
+  if (lowerComments.match(/information|info|detail|explain|clear/)) categories.push('information-clarity');
+  if (lowerComments.match(/claim|policy|process|procedure/)) categories.push('process-efficiency');
+  if (lowerComments.match(/friendly|professional|rude|polite|attitude/)) categories.push('staff-behavior');
+  
+  return categories.length > 0 ? categories : ['general'];
+}
+
 // ---------- MATCHING LOGIC ----------
-function matchIntent(message) {
+function matchIntent(message, sessionId) {
+  const lowerMsg = message.toLowerCase().trim();
+  
+  // Check if user is in an active feedback session
+  if (feedbackSessions[sessionId] && feedbackSessions[sessionId].active) {
+    return handleFeedbackConversation(message, sessionId);
+  }
+  
+  // Customer lookup
   const custMatch = message.match(/CUST\d{3}/i);
   if (custMatch) {
     const customer = customers.find(c => c.customerId === custMatch[0].toUpperCase());
     if (customer) {
       const policy = policies.find(p => p.customerId === customer.customerId);
-      return `Customer ${customer.name} (${customer.customerId}) has policy ${policy.policyNumber}. Status: ${policy.status}, Product: ${policy.product}.`;
+      // After providing info, prompt for feedback
+      return `Customer ${customer.name} (${customer.customerId}) has policy ${policy.policyNumber}. Status: ${policy.status}, Product: ${policy.product}.\n\nWas this information helpful? Type 'feedback' to share your experience.`;
     }
   }
 
+  // Policy lookup
   const policyMatch = message.match(/PN\d{6}/i);
   if (policyMatch) {
     const policy = policies.find(p => p.policyNumber === policyMatch[0].toUpperCase());
     if (policy) {
       const customer = customers.find(c => c.customerId === policy.customerId);
-      return `Policy ${policy.policyNumber} belongs to ${customer.name}. Status: ${policy.status}, Premium: KES ${policy.premium}, Expiry: ${policy.expiryDate}.`;
+      return `Policy ${policy.policyNumber} belongs to ${customer.name}. Status: ${policy.status}, Premium: KES ${policy.premium}, Expiry: ${policy.expiryDate}.\n\nWas this information helpful? Type 'feedback' to share your experience.`;
     }
   }
 
+  // Claim lookup
   const claimMatch = message.match(/CLM\d{4}/i);
   if (claimMatch) {
     const claim = claims.find(cl => cl.claimId === claimMatch[0].toUpperCase());
     if (claim) {
       const policy = policies.find(p => p.policyNumber === claim.policyNumber);
       const customer = customers.find(c => c.customerId === policy.customerId);
-      return `Claim ${claim.claimId} for ${customer.name} (${policy.policyNumber}) is ${claim.status}. Amount: KES ${claim.amount}, Description: ${claim.description}.`;
+      return `Claim ${claim.claimId} for ${customer.name} (${policy.policyNumber}) is ${claim.status}. Amount: KES ${claim.amount}, Description: ${claim.description}.\n\nWas this information helpful? Type 'feedback' to share your experience.`;
     }
   }
 
-  // ---------- FEEDBACK INTENT ----------
-  // Check for feedback keywords and rating patterns
-  const feedbackKeywords = ['feedback', 'rate', 'rating', 'review', 'survey', 'satisfied', 'experience'];
-  const hasFeedbackKeyword = feedbackKeywords.some(keyword => message.toLowerCase().includes(keyword));
+  // ---------- ENHANCED FEEDBACK INTENT ----------
   
-  // Check for rating patterns (e.g., "5 stars", "rate 5", "5/5", "rating: 4")
-  const ratingMatch = message.match(/(?:rate|rating|stars?|score)?\s*[:=]?\s*([1-5])(?:\/5|\s*stars?)?/i);
+  // Trigger feedback flow
+  const feedbackTriggers = [
+    'feedback', 'review', 'rate', 'rating', 'survey', 'comment', 'complain', 'complaint',
+    'satisfied', 'satisfaction', 'experience', 'opinion', 'suggest', 'suggestion',
+    'improve', 'improvement', 'good service', 'bad service', 'thank you', 'thanks'
+  ];
   
-  if (hasFeedbackKeyword || ratingMatch) {
-    return "Thank you for wanting to share your feedback! Please provide your rating and comments in this format:\n\n" +
-           "FEEDBACK: [rating 1-5] [your comments]\n\n" +
-           "Example: FEEDBACK: 5 Great service, very helpful!\n" +
-           "Example: FEEDBACK: 3 Good but could be faster";
-  }
-
-  // Process actual feedback submission
-  const feedbackPattern = /FEEDBACK:\s*(\d)\s+(.+)/i;
-  const feedbackSubmit = message.match(feedbackPattern);
+  const hasFeedbackTrigger = feedbackTriggers.some(trigger => lowerMsg.includes(trigger));
   
-  if (feedbackSubmit) {
-    const rating = parseInt(feedbackSubmit[1]);
-    const comments = feedbackSubmit[2].trim();
+  // Also check if message contains a rating
+  const hasRating = extractRating(message) !== null;
+  
+  if (hasFeedbackTrigger || hasRating) {
+    // Initialize feedback session
+    feedbackSessions[sessionId] = {
+      active: true,
+      step: 'rating',
+      rating: null,
+      comments: null,
+      startTime: new Date().toISOString()
+    };
     
-    if (rating < 1 || rating > 5) {
-      return "Please provide a rating between 1 and 5. Example: FEEDBACK: 4 Very satisfied with the service";
+    // If they already provided a rating, extract it
+    const rating = extractRating(message);
+    if (rating) {
+      feedbackSessions[sessionId].rating = rating;
+      feedbackSessions[sessionId].step = 'comments';
+      return `Thank you for rating us ${rating} out of 5 stars! 🌟\n\nWe'd love to hear more about your experience. What specifically made you give this rating? (Or type 'skip' if you prefer not to comment)`;
     }
+    
+    return "We value your feedback! 😊\n\nOn a scale of 1 to 5 stars, how would you rate your experience with Hakikisha Insurance?\n\n⭐ 1 - Very Poor\n⭐⭐ 2 - Poor\n⭐⭐⭐ 3 - Average\n⭐⭐⭐⭐ 4 - Good\n⭐⭐⭐⭐⭐ 5 - Excellent\n\nSimply type a number from 1 to 5.";
+  }
+
+  return "Hello, Welcome to Hakikisha Insurance. Please provide a valid customer ID, policy number, or claim ID for assistance. You can also type 'feedback' to share your experience with us.";
+}
+
+// Handle multi-turn feedback conversation
+function handleFeedbackConversation(message, sessionId) {
+  const session = feedbackSessions[sessionId];
+  const lowerMsg = message.toLowerCase().trim();
+  
+  // Handle cancellation
+  if (lowerMsg === 'cancel' || lowerMsg === 'exit' || lowerMsg === 'quit') {
+    delete feedbackSessions[sessionId];
+    return "Feedback cancelled. Feel free to provide feedback anytime by typing 'feedback'.";
+  }
+  
+  // Step 1: Collect rating
+  if (session.step === 'rating') {
+    const rating = extractRating(message);
+    
+    if (!rating) {
+      return "Please provide a valid rating from 1 to 5. For example, type '5' for excellent service or '3' for average service.";
+    }
+    
+    session.rating = rating;
+    session.step = 'comments';
+    
+    const ratingEmoji = '⭐'.repeat(rating);
+    return `Thank you for rating us ${rating} out of 5! ${ratingEmoji}\n\nWe'd love to hear more details about your experience. What went well? What could we improve? (Or type 'skip' to finish)`;
+  }
+  
+  // Step 2: Collect comments
+  if (session.step === 'comments') {
+    if (lowerMsg === 'skip') {
+      session.comments = 'No additional comments provided';
+    } else {
+      session.comments = message.trim();
+    }
+    
+    // Save feedback
+    const sentiment = analyzeSentiment(session.comments);
+    const categories = categorizeFeedback(session.comments);
     
     const feedback = {
       feedbackId: `FB${Date.now()}`,
-      rating: rating,
-      comments: comments,
+      sessionId: sessionId,
+      rating: session.rating,
+      comments: session.comments,
+      sentiment: sentiment,
+      categories: categories,
       timestamp: new Date().toISOString(),
-      session: "user-session" // This will be replaced by actual session ID from webhook
+      duration: new Date() - new Date(session.startTime)
     };
     
     feedbackData.push(feedback);
     console.log('📝 Feedback received:', feedback);
     
-    let responseMessage = `Thank you for your ${rating}-star feedback! We appreciate your input: "${comments}"\n\n`;
+    // Clear session
+    delete feedbackSessions[sessionId];
     
-    if (rating >= 4) {
-      responseMessage += "We're thrilled you had a positive experience! Your satisfaction is our priority.";
-    } else if (rating === 3) {
-      responseMessage += "Thank you for your honest feedback. We're always working to improve our service.";
+    // Generate personalized response
+    let response = `✅ Thank you for your valuable feedback!\n\n`;
+    response += `Your feedback ID is: ${feedback.feedbackId}\n\n`;
+    
+    if (session.rating >= 4) {
+      response += `🎉 We're thrilled you had a positive experience with Hakikisha Insurance! Your satisfaction is our top priority, and we're grateful for your trust.\n\n`;
+      if (session.comments !== 'No additional comments provided') {
+        response += `We especially appreciate your comment: "${session.comments}"\n\n`;
+      }
+      response += `Thank you for being a valued customer! Is there anything else we can help you with today?`;
+    } else if (session.rating === 3) {
+      response += `Thank you for your honest feedback. We understand there's room for improvement, and we're committed to serving you better.\n\n`;
+      if (session.comments !== 'No additional comments provided') {
+        response += `We've noted your comment: "${session.comments}"\n\n`;
+      }
+      response += `Our team will review your feedback to enhance our services. How else may we assist you today?`;
     } else {
-      responseMessage += "We're sorry your experience wasn't better. Your feedback helps us improve. A customer service representative may reach out to you.";
+      response += `😔 We sincerely apologize that we didn't meet your expectations. Your feedback is crucial in helping us improve.\n\n`;
+      if (session.comments !== 'No additional comments provided') {
+        response += `We've carefully recorded your comment: "${session.comments}"\n\n`;
+      }
+      response += `A customer service manager will review your feedback and may reach out to you directly. We're committed to making this right.\n\nIs there anything we can help you with right now?`;
     }
     
-    return responseMessage;
+    return response;
   }
-
-  return "Hello,Welcome to Hakikisha insurance. Please provide a valid customer ID, policy number, or claim ID for assistance.";
+  
+  return "I'm not sure what you mean. Please provide your feedback or type 'cancel' to exit.";
 }
 
 // ---------- Dialogflow Webhook ----------
@@ -186,7 +332,7 @@ app.post('/webhook', async (req, res) => {
   const userMessage = req.body.queryResult.queryText;
   const userId = req.body.session || "unknown";
 
-  const responseText = matchIntent(userMessage);
+  const responseText = matchIntent(userMessage, userId);
 
   const container = await getChatContainer();
   await container.items.create({ userId, message: userMessage, response: responseText, timestamp: new Date().toISOString() });
