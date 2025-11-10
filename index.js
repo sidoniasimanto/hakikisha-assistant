@@ -22,28 +22,28 @@ async function getChatContainer() {
   return container;
 }
 
-// ---------- CUSTOMERS ----------
+// ---------- CUSTOMERS WITH PINS ----------
 const customers = [
-  { customerId: "CUST001", name: "Alice Johnson", phone: "+254700000001", email: "alice.johnson@example.com" },
-  { customerId: "CUST002", name: "Bob Smith", phone: "+254700000002", email: "bob.smith@example.com" },
-  { customerId: "CUST003", name: "Charlie Brown", phone: "+254700000003", email: "charlie.brown@example.com" },
-  { customerId: "CUST004", name: "Diana Prince", phone: "+254700000004", email: "diana.prince@example.com" },
-  { customerId: "CUST005", name: "Edward Green", phone: "+254700000005", email: "edward.green@example.com" },
-  { customerId: "CUST006", name: "Fiona White", phone: "+254700000006", email: "fiona.white@example.com" },
-  { customerId: "CUST007", name: "George Black", phone: "+254700000007", email: "george.black@example.com" },
-  { customerId: "CUST008", name: "Hannah Blue", phone: "+254700000008", email: "hannah.blue@example.com" },
-  { customerId: "CUST009", name: "Ian Gray", phone: "+254700000009", email: "ian.gray@example.com" },
-  { customerId: "CUST010", name: "Julia Rose", phone: "+254700000010", email: "julia.rose@example.com" },
-  { customerId: "CUST011", name: "Kevin Brown", phone: "+254700000011", email: "kevin.brown@example.com" },
-  { customerId: "CUST012", name: "Laura Green", phone: "+254700000012", email: "laura.green@example.com" },
-  { customerId: "CUST013", name: "Michael White", phone: "+254700000013", email: "michael.white@example.com" },
-  { customerId: "CUST014", name: "Nina Black", phone: "+254700000014", email: "nina.black@example.com" },
-  { customerId: "CUST015", name: "Oscar Blue", phone: "+254700000015", email: "oscar.blue@example.com" },
-  { customerId: "CUST016", name: "Paula Gray", phone: "+254700000016", email: "paula.gray@example.com" },
-  { customerId: "CUST017", name: "Quentin Rose", phone: "+254700000017", email: "quentin.rose@example.com" },
-  { customerId: "CUST018", name: "Rachel Green", phone: "+254700000018", email: "rachel.green@example.com" },
-  { customerId: "CUST019", name: "Steve White", phone: "+254700000019", email: "steve.white@example.com" },
-  { customerId: "CUST020", name: "Tina Black", phone: "+254700000020", email: "tina.black@example.com" }
+  { customerId: "CUST001", name: "Alice Johnson", phone: "+254700000001", email: "alice.johnson@example.com", pin: "1234" },
+  { customerId: "CUST002", name: "Bob Smith", phone: "+254700000002", email: "bob.smith@example.com", pin: "5678" },
+  { customerId: "CUST003", name: "Charlie Brown", phone: "+254700000003", email: "charlie.brown@example.com", pin: "9012" },
+  { customerId: "CUST004", name: "Diana Prince", phone: "+254700000004", email: "diana.prince@example.com", pin: "3456" },
+  { customerId: "CUST005", name: "Edward Green", phone: "+254700000005", email: "edward.green@example.com", pin: "7890" },
+  { customerId: "CUST006", name: "Fiona White", phone: "+254700000006", email: "fiona.white@example.com", pin: "2345" },
+  { customerId: "CUST007", name: "George Black", phone: "+254700000007", email: "george.black@example.com", pin: "6789" },
+  { customerId: "CUST008", name: "Hannah Blue", phone: "+254700000008", email: "hannah.blue@example.com", pin: "0123" },
+  { customerId: "CUST009", name: "Ian Gray", phone: "+254700000009", email: "ian.gray@example.com", pin: "4567" },
+  { customerId: "CUST010", name: "Julia Rose", phone: "+254700000010", email: "julia.rose@example.com", pin: "8901" },
+  { customerId: "CUST011", name: "Kevin Brown", phone: "+254700000011", email: "kevin.brown@example.com", pin: "1357" },
+  { customerId: "CUST012", name: "Laura Green", phone: "+254700000012", email: "laura.green@example.com", pin: "2468" },
+  { customerId: "CUST013", name: "Michael White", phone: "+254700000013", email: "michael.white@example.com", pin: "3691" },
+  { customerId: "CUST014", name: "Nina Black", phone: "+254700000014", email: "nina.black@example.com", pin: "4702" },
+  { customerId: "CUST015", name: "Oscar Blue", phone: "+254700000015", email: "oscar.blue@example.com", pin: "5813" },
+  { customerId: "CUST016", name: "Paula Gray", phone: "+254700000016", email: "paula.gray@example.com", pin: "6924" },
+  { customerId: "CUST017", name: "Quentin Rose", phone: "+254700000017", email: "quentin.rose@example.com", pin: "7035" },
+  { customerId: "CUST018", name: "Rachel Green", phone: "+254700000018", email: "rachel.green@example.com", pin: "8146" },
+  { customerId: "CUST019", name: "Steve White", phone: "+254700000019", email: "steve.white@example.com", pin: "9257" },
+  { customerId: "CUST020", name: "Tina Black", phone: "+254700000020", email: "tina.black@example.com", pin: "1368" }
 ];
 
 // ---------- POLICIES ----------
@@ -94,15 +94,12 @@ const claims = [
   { claimId: "CLM0020", policyNumber: "PN100020", status: "Approved", amount: 12000, description: "Accident damage" }
 ];
 
-// ---------- FEEDBACK STORAGE ----------
+// ---------- AUTHENTICATION SESSION MANAGEMENT ----------
+const authSessions = {}; // { sessionId: { authenticatedCustomerId, pinAttempts, lastActivity } }
 const feedbackData = [];
-
-// Session state management for multi-turn feedback conversations
 const feedbackSessions = {};
 
 // ---------- FEEDBACK HELPER FUNCTIONS ----------
-
-// Detect sentiment from text
 function analyzeSentiment(text) {
   const positiveWords = ['good', 'great', 'excellent', 'amazing', 'wonderful', 'fantastic', 'helpful', 'quick', 'fast', 'satisfied', 'happy', 'love', 'best', 'perfect', 'smooth', 'easy', 'professional'];
   const negativeWords = ['bad', 'poor', 'terrible', 'awful', 'slow', 'unhelpful', 'disappointed', 'frustrated', 'angry', 'worst', 'horrible', 'useless', 'waste', 'confused', 'difficult', 'problem'];
@@ -116,20 +113,13 @@ function analyzeSentiment(text) {
   return 'neutral';
 }
 
-// Extract rating from natural language
 function extractRating(message) {
-  // Match patterns like "5 stars", "5/5", "rate 5", "rating: 4", "I give 3"
   const patterns = [
     /(?:rate|rating|give|score)?\s*[:=]?\s*([1-5])(?:\/5|\s*stars?|\s*out of 5)?/i,
     /([1-5])\s*(?:stars?|\/5|out of 5)/i,
-    /(?:excellent|amazing|perfect)/i, // 5 stars
-    /(?:good|satisfied|happy)/i, // 4 stars
-    /(?:okay|fine|average|decent)/i, // 3 stars
-    /(?:poor|bad|unsatisfied)/i, // 2 stars
-    /(?:terrible|awful|worst)/i // 1 star
   ];
   
-  for (let pattern of patterns.slice(0, 2)) {
+  for (let pattern of patterns) {
     const match = message.match(pattern);
     if (match && match[1]) {
       const rating = parseInt(match[1]);
@@ -137,7 +127,6 @@ function extractRating(message) {
     }
   }
   
-  // Sentiment-based rating
   const lowerMsg = message.toLowerCase();
   if (lowerMsg.match(/excellent|amazing|perfect/)) return 5;
   if (lowerMsg.match(/good|satisfied|happy/)) return 4;
@@ -148,7 +137,6 @@ function extractRating(message) {
   return null;
 }
 
-// Categorize feedback
 function categorizeFeedback(comments) {
   const categories = [];
   const lowerComments = comments.toLowerCase();
@@ -163,62 +151,155 @@ function categorizeFeedback(comments) {
   return categories.length > 0 ? categories : ['general'];
 }
 
-// ---------- MATCHING LOGIC ----------
+// ---------- SESSION MANAGEMENT ----------
+function isAuthenticated(sessionId) {
+  return authSessions[sessionId] && authSessions[sessionId].authenticatedCustomerId;
+}
+
+function getAuthenticatedCustomer(sessionId) {
+  return authSessions[sessionId]?.authenticatedCustomerId || null;
+}
+
+function endSession(sessionId) {
+  delete authSessions[sessionId];
+  delete feedbackSessions[sessionId];
+  console.log(`🔒 Session ended: ${sessionId}`);
+}
+
+// ---------- MATCHING LOGIC WITH PIN AUTHENTICATION ----------
 function matchIntent(message, sessionId) {
   const lowerMsg = message.toLowerCase().trim();
   
+  // Check for session termination commands
+  if (lowerMsg === 'bye' || lowerMsg === 'goodbye' || lowerMsg === 'exit' || lowerMsg === 'quit' || lowerMsg === 'end') {
+    endSession(sessionId);
+    return "Thank you for using Hakikisha Insurance! Your session has been ended. Have a great day! 👋";
+  }
+  
   // Check if user is in an active feedback session
   if (feedbackSessions[sessionId] && feedbackSessions[sessionId].active) {
-    return handleFeedbackConversation(message, sessionId);
+    const feedbackResponse = handleFeedbackConversation(message, sessionId);
+    // If feedback is completed, end the session
+    if (!feedbackSessions[sessionId] || !feedbackSessions[sessionId].active) {
+      endSession(sessionId);
+    }
+    return feedbackResponse;
   }
   
-  // Customer lookup
+  // Check if waiting for PIN verification
+  if (authSessions[sessionId] && authSessions[sessionId].waitingForPin) {
+    const enteredPin = message.trim();
+    const requestedCustomerId = authSessions[sessionId].requestedCustomerId;
+    const customer = customers.find(c => c.customerId === requestedCustomerId);
+    
+    if (!customer) {
+      delete authSessions[sessionId];
+      return "Session error. Please try again.";
+    }
+    
+    if (enteredPin === customer.pin) {
+      // Successful authentication
+      authSessions[sessionId] = {
+        authenticatedCustomerId: requestedCustomerId,
+        waitingForPin: false,
+        pinAttempts: 0,
+        lastActivity: Date.now()
+      };
+      console.log(`✅ Authentication successful for ${requestedCustomerId}`);
+      
+      const policy = policies.find(p => p.customerId === customer.customerId);
+      return `✅ Authentication successful! Welcome, ${customer.name}.\n\nHere are your details:\n\n📋 Customer ID: ${customer.customerId}\n📞 Phone: ${customer.phone}\n📧 Email: ${customer.email}\n\n📑 Policy Number: ${policy.policyNumber}\n📊 Status: ${policy.status}\n💼 Product: ${policy.product}\n💰 Premium: KES ${policy.premium}\n📅 Expiry Date: ${policy.expiryDate}\n\nYou can now ask for policy or claim information. Type 'bye' to end your session.`;
+    } else {
+      // Failed authentication
+      authSessions[sessionId].pinAttempts = (authSessions[sessionId].pinAttempts || 0) + 1;
+      
+      if (authSessions[sessionId].pinAttempts >= 3) {
+        delete authSessions[sessionId];
+        return "❌ Too many incorrect PIN attempts. For security reasons, your session has been terminated. Please try again later or contact support at +254 700 000 000.";
+      }
+      
+      return `❌ Incorrect PIN. Please try again. (Attempt ${authSessions[sessionId].pinAttempts}/3)`;
+    }
+  }
+  
+  // Customer ID lookup - Request PIN
   const custMatch = message.match(/CUST\d{3}/i);
   if (custMatch) {
-    const customer = customers.find(c => c.customerId === custMatch[0].toUpperCase());
-    if (customer) {
-      const policy = policies.find(p => p.customerId === customer.customerId);
-      return `Customer ${customer.name} (${customer.customerId}) has policy ${policy.policyNumber}. Status: ${policy.status}, Product: ${policy.product}.`;
+    const requestedCustomerId = custMatch[0].toUpperCase();
+    const customer = customers.find(c => c.customerId === requestedCustomerId);
+    
+    if (!customer) {
+      return `Customer ID ${requestedCustomerId} not found. Please check and try again.`;
     }
+    
+    // Check if already authenticated for this customer
+    if (isAuthenticated(sessionId) && getAuthenticatedCustomer(sessionId) === requestedCustomerId) {
+      const policy = policies.find(p => p.customerId === customer.customerId);
+      return `You are already viewing ${customer.name}'s account.\n\n📑 Policy Number: ${policy.policyNumber}\n📊 Status: ${policy.status}\n💼 Product: ${policy.product}\n💰 Premium: KES ${policy.premium}\n📅 Expiry Date: ${policy.expiryDate}`;
+    }
+    
+    // Check if trying to access different customer while authenticated
+    if (isAuthenticated(sessionId) && getAuthenticatedCustomer(sessionId) !== requestedCustomerId) {
+      return `⚠️ You are currently authenticated as ${getAuthenticatedCustomer(sessionId)}. To access another customer's information, please end your current session by typing 'bye', then start a new query.`;
+    }
+    
+    // Request PIN authentication
+    authSessions[sessionId] = {
+      requestedCustomerId: requestedCustomerId,
+      waitingForPin: true,
+      pinAttempts: 0,
+      lastActivity: Date.now()
+    };
+    
+    return `🔐 Security Verification Required\n\nTo access information for ${customer.name} (${requestedCustomerId}), please enter your 4-digit PIN.\n\n🔒 Your PIN is confidential and ensures your data privacy.\n\n(Note: For this demo, ${customer.name}'s PIN is: ${customer.pin})`;
   }
 
-  // Policy lookup
+  // Policy lookup - requires authentication
   const policyMatch = message.match(/PN\d{6}/i);
   if (policyMatch) {
-    const policy = policies.find(p => p.policyNumber === policyMatch[0].toUpperCase());
-    if (policy) {
-      const customer = customers.find(c => c.customerId === policy.customerId);
-      return `Policy ${policy.policyNumber} belongs to ${customer.name}. Status: ${policy.status}, Premium: KES ${policy.premium}, Expiry: ${policy.expiryDate}.`;
+    const policyNumber = policyMatch[0].toUpperCase();
+    const policy = policies.find(p => p.policyNumber === policyNumber);
+    
+    if (!policy) {
+      return `Policy number ${policyNumber} not found. Please check and try again.`;
     }
+    
+    // Check if authenticated for this policy's customer
+    if (!isAuthenticated(sessionId) || getAuthenticatedCustomer(sessionId) !== policy.customerId) {
+      return `🔐 Access Denied: You must be authenticated as ${policy.customerId} to view this policy. Please provide your customer ID and PIN first.`;
+    }
+    
+    const customer = customers.find(c => c.customerId === policy.customerId);
+    return `Policy ${policy.policyNumber} belongs to ${customer.name}.\n\n📊 Status: ${policy.status}\n💰 Premium: KES ${policy.premium}\n📅 Start Date: ${policy.startDate}\n📅 Expiry Date: ${policy.expiryDate}\n💼 Product: ${policy.product}`;
   }
 
-  // Claim lookup
+  // Claim lookup - requires authentication
   const claimMatch = message.match(/CLM\d{4}/i);
   if (claimMatch) {
-    const claim = claims.find(cl => cl.claimId === claimMatch[0].toUpperCase());
-    if (claim) {
-      const policy = policies.find(p => p.policyNumber === claim.policyNumber);
-      const customer = customers.find(c => c.customerId === policy.customerId);
-      return `Claim ${claim.claimId} for ${customer.name} (${policy.policyNumber}) is ${claim.status}. Amount: KES ${claim.amount}, Description: ${claim.description}.`;
+    const claimId = claimMatch[0].toUpperCase();
+    const claim = claims.find(cl => cl.claimId === claimId);
+    
+    if (!claim) {
+      return `Claim ID ${claimId} not found. Please check and try again.`;
     }
+    
+    const policy = policies.find(p => p.policyNumber === claim.policyNumber);
+    
+    // Check if authenticated for this claim's customer
+    if (!isAuthenticated(sessionId) || getAuthenticatedCustomer(sessionId) !== policy.customerId) {
+      return `🔐 Access Denied: You must be authenticated as ${policy.customerId} to view this claim. Please provide your customer ID and PIN first.`;
+    }
+    
+    const customer = customers.find(c => c.customerId === policy.customerId);
+    return `Claim ${claim.claimId} for ${customer.name} (${policy.policyNumber})\n\n📊 Status: ${claim.status}\n💵 Amount: KES ${claim.amount}\n📝 Description: ${claim.description}`;
   }
 
-  // ---------- ENHANCED FEEDBACK INTENT ----------
-  
-  // Trigger feedback flow
-  const feedbackTriggers = [
-    'feedback', 'review', 'rate', 'rating', 'survey', 'comment', 'complain', 'complaint',
-    'satisfied', 'satisfaction', 'experience', 'opinion', 'suggest', 'suggestion',
-    'improve', 'improvement', 'good service', 'bad service', 'thank you', 'thanks'
-  ];
-  
+  // Feedback intent
+  const feedbackTriggers = ['feedback', 'review', 'rate', 'rating', 'survey', 'comment', 'complain', 'complaint', 'satisfied', 'satisfaction', 'experience', 'opinion', 'suggest', 'suggestion', 'improve', 'improvement', 'good service', 'bad service', 'thank you', 'thanks'];
   const hasFeedbackTrigger = feedbackTriggers.some(trigger => lowerMsg.includes(trigger));
-  
-  // Also check if message contains a rating
   const hasRating = extractRating(message) !== null;
   
   if (hasFeedbackTrigger || hasRating) {
-    // Initialize feedback session
     feedbackSessions[sessionId] = {
       active: true,
       step: 'rating',
@@ -227,18 +308,17 @@ function matchIntent(message, sessionId) {
       startTime: new Date().toISOString()
     };
     
-    // If they already provided a rating, extract it
     const rating = extractRating(message);
     if (rating) {
       feedbackSessions[sessionId].rating = rating;
       feedbackSessions[sessionId].step = 'comments';
-      return `Thank you for rating us ${rating} out of 5 stars! 🌟\n\nWe'd love to hear more about your experience. What specifically made you give this rating? (Or type 'skip' if you prefer not to comment)`;
+      return `Thank you for rating us ${rating} out of 5 stars! 🌟\n\nWe'd love to hear more about your experience. What specifically made you give this rating? (Or type 'skip' if you prefer not to comment)\n\nNote: Your session will end after submitting feedback.`;
     }
     
-    return "We value your feedback! 😊\n\nOn a scale of 1 to 5 stars, how would you rate your experience with Hakikisha Insurance?\n\n⭐ 1 - Very Poor\n⭐⭐ 2 - Poor\n⭐⭐⭐ 3 - Average\n⭐⭐⭐⭐ 4 - Good\n⭐⭐⭐⭐⭐ 5 - Excellent\n\nSimply type a number from 1 to 5.";
+    return "We value your feedback! 😊\n\nOn a scale of 1 to 5 stars, how would you rate your experience with Hakikisha Insurance?\n\n⭐ 1 - Very Poor\n⭐⭐ 2 - Poor\n⭐⭐⭐ 3 - Average\n⭐⭐⭐⭐ 4 - Good\n⭐⭐⭐⭐⭐ 5 - Excellent\n\nSimply type a number from 1 to 5.\n\nNote: Your session will end after submitting feedback.";
   }
 
-  return "Hello, Welcome to Hakikisha Insurance. Please provide a valid customer ID, policy number, or claim ID for assistance. You can also type 'feedback' to share your experience with us.";
+  return "Hello, Welcome to Hakikisha Insurance. Please provide a valid customer ID (e.g., CUST001) to begin. You'll need to verify your identity with a PIN to access your information.";
 }
 
 // Handle multi-turn feedback conversation
@@ -246,13 +326,11 @@ function handleFeedbackConversation(message, sessionId) {
   const session = feedbackSessions[sessionId];
   const lowerMsg = message.toLowerCase().trim();
   
-  // Handle cancellation
   if (lowerMsg === 'cancel' || lowerMsg === 'exit' || lowerMsg === 'quit') {
     delete feedbackSessions[sessionId];
     return "Feedback cancelled. Feel free to provide feedback anytime by typing 'feedback'.";
   }
   
-  // Step 1: Collect rating
   if (session.step === 'rating') {
     const rating = extractRating(message);
     
@@ -267,7 +345,6 @@ function handleFeedbackConversation(message, sessionId) {
     return `Thank you for rating us ${rating} out of 5! ${ratingEmoji}\n\nWe'd love to hear more details about your experience. What went well? What could we improve? (Or type 'skip' to finish)`;
   }
   
-  // Step 2: Collect comments
   if (session.step === 'comments') {
     if (lowerMsg === 'skip') {
       session.comments = 'No additional comments provided';
@@ -275,7 +352,6 @@ function handleFeedbackConversation(message, sessionId) {
       session.comments = message.trim();
     }
     
-    // Save feedback
     const sentiment = analyzeSentiment(session.comments);
     const categories = categorizeFeedback(session.comments);
     
@@ -293,10 +369,8 @@ function handleFeedbackConversation(message, sessionId) {
     feedbackData.push(feedback);
     console.log('📝 Feedback received:', feedback);
     
-    // Clear session
     delete feedbackSessions[sessionId];
     
-    // Generate personalized response
     let response = `✅ Thank you for your valuable feedback!\n\n`;
     response += `Your feedback ID is: ${feedback.feedbackId}\n\n`;
     
@@ -305,20 +379,21 @@ function handleFeedbackConversation(message, sessionId) {
       if (session.comments !== 'No additional comments provided') {
         response += `We especially appreciate your comment: "${session.comments}"\n\n`;
       }
-      response += `Thank you for being a valued customer! Is there anything else we can help you with today?`;
+      response += `Thank you for being a valued customer!\n\n`;
     } else if (session.rating === 3) {
       response += `Thank you for your honest feedback. We understand there's room for improvement, and we're committed to serving you better.\n\n`;
       if (session.comments !== 'No additional comments provided') {
         response += `We've noted your comment: "${session.comments}"\n\n`;
       }
-      response += `Our team will review your feedback to enhance our services. How else may we assist you today?`;
     } else {
       response += `😔 We sincerely apologize that we didn't meet your expectations. Your feedback is crucial in helping us improve.\n\n`;
       if (session.comments !== 'No additional comments provided') {
         response += `We've carefully recorded your comment: "${session.comments}"\n\n`;
       }
-      response += `A customer service manager will review your feedback and may reach out to you directly. We're committed to making this right.\n\nIs there anything we can help you with right now?`;
+      response += `A customer service manager will review your feedback and may reach out to you directly. We're committed to making this right.\n\n`;
     }
+    
+    response += `Your session has been ended. Thank you for using Hakikisha Insurance! 👋`;
     
     return response;
   }
