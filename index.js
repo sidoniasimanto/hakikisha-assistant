@@ -178,8 +178,7 @@ function matchIntent(message, sessionId) {
     const customer = customers.find(c => c.customerId === custMatch[0].toUpperCase());
     if (customer) {
       const policy = policies.find(p => p.customerId === customer.customerId);
-      // After providing info, prompt for feedback
-      return `Customer ${customer.name} (${customer.customerId}) has policy ${policy.policyNumber}. Status: ${policy.status}, Product: ${policy.product}.\n\nWas this information helpful? Type 'feedback' to share your experience.`;
+      return `Customer ${customer.name} (${customer.customerId}) has policy ${policy.policyNumber}. Status: ${policy.status}, Product: ${policy.product}.`;
     }
   }
 
@@ -189,7 +188,7 @@ function matchIntent(message, sessionId) {
     const policy = policies.find(p => p.policyNumber === policyMatch[0].toUpperCase());
     if (policy) {
       const customer = customers.find(c => c.customerId === policy.customerId);
-      return `Policy ${policy.policyNumber} belongs to ${customer.name}. Status: ${policy.status}, Premium: KES ${policy.premium}, Expiry: ${policy.expiryDate}.\n\nWas this information helpful? Type 'feedback' to share your experience.`;
+      return `Policy ${policy.policyNumber} belongs to ${customer.name}. Status: ${policy.status}, Premium: KES ${policy.premium}, Expiry: ${policy.expiryDate}.`;
     }
   }
 
@@ -200,7 +199,7 @@ function matchIntent(message, sessionId) {
     if (claim) {
       const policy = policies.find(p => p.policyNumber === claim.policyNumber);
       const customer = customers.find(c => c.customerId === policy.customerId);
-      return `Claim ${claim.claimId} for ${customer.name} (${policy.policyNumber}) is ${claim.status}. Amount: KES ${claim.amount}, Description: ${claim.description}.\n\nWas this information helpful? Type 'feedback' to share your experience.`;
+      return `Claim ${claim.claimId} for ${customer.name} (${policy.policyNumber}) is ${claim.status}. Amount: KES ${claim.amount}, Description: ${claim.description}.`;
     }
   }
 
