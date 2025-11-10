@@ -94,6 +94,9 @@ const claims = [
   { claimId: "CLM0020", policyNumber: "PN100020", status: "Approved", amount: 12000, description: "Accident damage" }
 ];
 
+// ---------- FEEDBACK STORAGE ----------
+const feedbackData = [];
+
 // ---------- MATCHING LOGIC ----------
 function matchIntent(message) {
   const custMatch = message.match(/CUST\d{3}/i);
@@ -122,6 +125,57 @@ function matchIntent(message) {
       const customer = customers.find(c => c.customerId === policy.customerId);
       return `Claim ${claim.claimId} for ${customer.name} (${policy.policyNumber}) is ${claim.status}. Amount: KES ${claim.amount}, Description: ${claim.description}.`;
     }
+  }
+
+  // ---------- FEEDBACK INTENT ----------
+  // Check for feedback keywords and rating patterns
+  const feedbackKeywords = ['feedback', 'rate', 'rating', 'review', 'survey', 'satisfied', 'experience'];
+  const hasFeedbackKeyword = feedbackKeywords.some(keyword => message.toLowerCase().includes(keyword));
+  
+  // Check for rating patterns (e.g., "5 stars", "rate 5", "5/5", "rating: 4")
+  const ratingMatch = message.match(/(?:rate|rating|stars?|score)?\s*[:=]?\s*([1-5])(?:\/5|\s*stars?)?/i);
+  
+  if (hasFeedbackKeyword || ratingMatch) {
+    return "Thank you for wanting to share your feedback! Please provide your rating and comments in this format:\n\n" +
+           "FEEDBACK: [rating 1-5] [your comments]\n\n" +
+           "Example: FEEDBACK: 5 Great service, very helpful!\n" +
+           "Example: FEEDBACK: 3 Good but could be faster";
+  }
+
+  // Process actual feedback submission
+  const feedbackPattern = /FEEDBACK:\s*(\d)\s+(.+)/i;
+  const feedbackSubmit = message.match(feedbackPattern);
+  
+  if (feedbackSubmit) {
+    const rating = parseInt(feedbackSubmit[1]);
+    const comments = feedbackSubmit[2].trim();
+    
+    if (rating < 1 || rating > 5) {
+      return "Please provide a rating between 1 and 5. Example: FEEDBACK: 4 Very satisfied with the service";
+    }
+    
+    const feedback = {
+      feedbackId: `FB${Date.now()}`,
+      rating: rating,
+      comments: comments,
+      timestamp: new Date().toISOString(),
+      session: "user-session" // This will be replaced by actual session ID from webhook
+    };
+    
+    feedbackData.push(feedback);
+    console.log('📝 Feedback received:', feedback);
+    
+    let responseMessage = `Thank you for your ${rating}-star feedback! We appreciate your input: "${comments}"\n\n`;
+    
+    if (rating >= 4) {
+      responseMessage += "We're thrilled you had a positive experience! Your satisfaction is our priority.";
+    } else if (rating === 3) {
+      responseMessage += "Thank you for your honest feedback. We're always working to improve our service.";
+    } else {
+      responseMessage += "We're sorry your experience wasn't better. Your feedback helps us improve. A customer service representative may reach out to you.";
+    }
+    
+    return responseMessage;
   }
 
   return "Hello,Welcome to Hakikisha insurance. Please provide a valid customer ID, policy number, or claim ID for assistance.";
